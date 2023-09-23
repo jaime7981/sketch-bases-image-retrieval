@@ -30,9 +30,9 @@ def main():
     # TODO: load dataset
     dataset = tf.data.Dataset.from_tensor_slices((np.random.rand(100, 224, 224, 3), np.random.rand(100, 224, 224, 3)))
 
-    ds_train = dataset
+    train_dataset = dataset
     train_dataset = (
-        ds_train.shuffle(1024)
+        train_dataset.shuffle(1024)
         .map(map_func, num_parallel_calls=AUTO)
         .batch(BATCH_SIZE)
         .prefetch(AUTO) )

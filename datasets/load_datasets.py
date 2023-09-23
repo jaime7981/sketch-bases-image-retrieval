@@ -4,6 +4,8 @@ import tensorflow as tf
 import numpy as np
 from matplotlib import pyplot as plt
 import random
+from pathlib import Path
+import shlex
 
 # get path of running script
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -51,16 +53,13 @@ def load_and_preprocess_image(file_path):
 
     file_extension = file_path.split('.')[-1]
 
-    #file_path = r'{}'.format(file_path)
-    #file_path = Path(raw_path)
-    #file_path.encode('unicode-escape').decode().replace('\\\\', '\\')
-    #file_path = fr"{file_path}"
+    file_path = file_path.replace(" ", "_")
 
     if file_extension not in ['jpg', 'png']:
         raise ValueError('Invalid file extension')
     
     try:
-        image = tf.io.read_file(str(file_path))
+        image = tf.io.read_file(file_path)
     except:
         print('Error reading file: {}'.format(file_path))
         return None

@@ -46,14 +46,21 @@ def load_images_paths(df_sketch):
 
 
 def load_and_preprocess_image(file_path):
-    file_path = file_path.decode("utf-8")
+    if isinstance(file_path, bytes):
+        file_path = file_path.decode("utf-8")
+
     file_extension = file_path.split('.')[-1]
+
+    #file_path = r'{}'.format(file_path)
+    #file_path = Path(raw_path)
+    #file_path.encode('unicode-escape').decode().replace('\\\\', '\\')
+    #file_path = fr"{file_path}"
 
     if file_extension not in ['jpg', 'png']:
         raise ValueError('Invalid file extension')
     
     try:
-        image = tf.io.read_file(file_path)
+        image = tf.io.read_file(str(file_path))
     except:
         print('Error reading file: {}'.format(file_path))
         return None
@@ -71,6 +78,7 @@ def load_and_preprocess_image(file_path):
 def generate_triplets(anchor_path, positive_path, triplet_paths):
     anchor_image = load_and_preprocess_image(anchor_path)
     positive_image = load_and_preprocess_image(positive_path)
+    print(anchor_path)
 
     negative_path = None
     negative_image = None
@@ -87,20 +95,23 @@ def generate_triplets(anchor_path, positive_path, triplet_paths):
 
 
 def triplet_generator(triplet_paths):
+    anchor_image_list, positive_image_list, negative_image_list = [], [], []
+
     for triplet_path in triplet_paths:
-        print(triplet_path)
-        yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
+        anchor_image, positive_image, negative_image = generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
+        anchor_image_list.append(anchor_image)
+        positive_image_list.append(positive_image)
+        negative_image_list.append(negative_image)
+
+    return anchor_image_list, positive_image_list, negative_image_list
 
 
 def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
     triplet_paths = list(zip(anchor_paths, positive_paths))
 
-    dataset = tf.data.Dataset.from_generator(
-        triplet_generator,
-        args=[triplet_paths],
-        output_types=(tf.float32, tf.float32, tf.float32),
-        output_shapes=(image_size, image_size, image_size)
-    )
+    anchor_image_list, positive_image_list, negative_image_list = triplet_generator(triplet_paths)
+
+    dataset = tf.data.Dataset.from_tensor_slices((anchor_image_list, positive_image_list, negative_image_list))
 
     return dataset
 

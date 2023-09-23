@@ -15,13 +15,13 @@ def view(anchors, positives, negatives):
     plt.waitforbuttonpress(1)
         
 class Siamese(tf.keras.Model):
-    def __init__(self, config_model, config_data, **kwargs):        
+    def __init__(self, CROP_SIZE = 224, PROJECT_DIM = 512, WEIGHT_DECAY = 0.0005, MARGIN = 1.0, CHANNELS = 3, **kwargs):        
         super(Siamese, self).__init__(**kwargs)        
-        self.CROP_SIZE = config_data.getint('CROP_SIZE')
-        self.PROJECT_DIM =  config_model.getint('PROJECT_DIM')
-        self.WEIGHT_DECAY = config_model.getfloat('WEIGHT_DECAY')            
-        self.MARGIN = config_model.getfloat('MARGIN')
-        self.CHANNELS = 3        
+        self.CROP_SIZE = CROP_SIZE
+        self.PROJECT_DIM =  PROJECT_DIM
+        self.WEIGHT_DECAY = WEIGHT_DECAY
+        self.MARGIN = MARGIN
+        self.CHANNELS = CHANNELS   
         self.encoder = self.get_encoder()
         self.loss_tracker = tf.keras.metrics.Mean(name="loss")
         self.dist_pos_tracker = tf.keras.metrics.Mean(name="dist_pos")

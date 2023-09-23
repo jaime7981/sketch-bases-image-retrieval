@@ -77,7 +77,7 @@ def load_and_preprocess_image(file_path):
 def generate_triplets(anchor_path, positive_path, triplet_paths):
     anchor_image = load_and_preprocess_image(anchor_path)
     positive_image = load_and_preprocess_image(positive_path)
-    print(anchor_path)
+    print(anchor_image)
 
     negative_path = None
     negative_image = None
@@ -94,28 +94,25 @@ def generate_triplets(anchor_path, positive_path, triplet_paths):
 
 
 def triplet_generator(triplet_paths):
-    anchor_image_list, positive_image_list, negative_image_list = [], [], []
-
     for triplet_path in triplet_paths:
-        anchor_image, positive_image, negative_image = generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
-        anchor_image_list.append(anchor_image)
-        positive_image_list.append(positive_image)
-        negative_image_list.append(negative_image)
-
-    return anchor_image_list, positive_image_list, negative_image_list
+        print(triplet_path)
+        yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
 
 
 def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
     triplet_paths = list(zip(anchor_paths, positive_paths))
 
-    anchor_image_list, positive_image_list, negative_image_list = triplet_generator(triplet_paths)
-
-    dataset = tf.data.Dataset.from_tensor_slices((anchor_image_list, positive_image_list, negative_image_list))
+    dataset = tf.data.Dataset.from_generator(
+        triplet_generator,
+        args=[triplet_paths],
+        output_types=(tf.float32, tf.float32, tf.float32),
+        output_shapes=(image_size, image_size, image_size)
+    )
 
     return dataset
 
 
-def visualize_triplets(dataset, num_triplets=5):
+def visualize_triplets(dataset, num_triplets=3):
     for triplet in range(num_triplets):
         for anchor, positive, negative in dataset.take(1):
             fig, ax = plt.subplots(1, 3)

@@ -14,7 +14,7 @@ SKETCH_STATS_PATH = os.path.join(SCRIPT_PATH, 'info', 'stats.csv')
 PHOTO_PATH = os.path.join(SCRIPT_PATH, 'rendered_256x256', '256x256', 'photo', 'tx_000000000000')
 SKETCH_PATH = os.path.join(SCRIPT_PATH, 'rendered_256x256', '256x256', 'sketch', 'tx_000000000000')
 
-image_size = (256, 256, 3)
+image_size = (224, 224, 3)
 
 def load_sketch_stats():
     return pd.read_csv(SKETCH_STATS_PATH, index_col=None)
@@ -70,33 +70,21 @@ def load_and_preprocess_image(file_path):
         image = tf.image.decode_png(image, channels=3)
 
     image = tf.image.convert_image_dtype(image, tf.float32)
+    image = tf.image.resize(image, [image_size[0], image_size[1]])
 
     return image
 
 
+# Now only generates anchor and positives
 def generate_triplets(anchor_path, positive_path, triplet_paths):
     anchor_image = load_and_preprocess_image(anchor_path)
     positive_image = load_and_preprocess_image(positive_path)
-    # print(anchor_image)
-
-    negative_path = None
-    negative_image = None
-
-    while True:
-        negative_path = triplet_paths[random.randint(0, len(triplet_paths) - 1)][0]
-        
-        negative_image = load_and_preprocess_image(negative_path)
-
-        if negative_path != anchor_path and negative_path != positive_path and negative_path is not None and negative_image is not None:
-            break
-
-    return anchor_image, positive_image, negative_image
+    return anchor_image, positive_image
 
 
 def triplet_generator(triplet_paths):
     for triplet_path in triplet_paths:
-        anchor, positive, negative = generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
-        yield {'image-anchor': anchor, 'image-positive': positive, 'image-negative': negative}
+        yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
 
 
 def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
@@ -105,20 +93,21 @@ def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
     dataset = tf.data.Dataset.from_generator(
         triplet_generator,
         args=[triplet_paths],
-        output_types=(tf.float32, tf.float32, tf.float32),
-        output_shapes=(image_size, image_size, image_size)
+        output_types=(tf.float32, tf.float32),
+        output_shapes=(image_size, image_size)
     )
 
+    dataset = dataset.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
 
 
+# TODO: Broken function because of imagetenasor size
 def visualize_triplets(dataset, num_triplets=3):
     for triplet in range(num_triplets):
-        for anchor, positive, negative in dataset.take(1):
+        for anchor, positive in dataset.take(1):
             fig, ax = plt.subplots(1, 3)
             ax[0].imshow(anchor)
             ax[1].imshow(positive)
-            ax[2].imshow(negative)
             plt.show()
 
 

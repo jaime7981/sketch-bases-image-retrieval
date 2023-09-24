@@ -91,9 +91,34 @@ def generate_triplets(anchor_path, positive_path, triplet_paths):
     return anchor_image, positive_image, negative_image
 
 
-def triplet_generator(triplet_paths):
-    for triplet_path in triplet_paths:
-        yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
+def triplet_generator(triplet_paths, batch_size, image_size):
+    while True:
+        indices = np.random.choice(len(triplet_paths), size=batch_size)
+        anchor_batch = []
+        positive_batch = []
+        negative_batch = []
+
+        for index in indices:
+            anchor_path, positive_path = triplet_paths[index]
+            anchor_image = load_and_preprocess_image(anchor_path)
+            positive_image = load_and_preprocess_image(positive_path)
+
+            negative_path = None
+            negative_image = None
+
+            while negative_image is None:
+                negative_path = triplet_paths[random.randint(0, len(triplet_paths) - 1)][0]
+                if negative_path != anchor_path and negative_path != positive_path:
+                    negative_image = load_and_preprocess_image(negative_path)
+
+            anchor_batch.append(anchor_image)
+            positive_batch.append(positive_image)
+            negative_batch.append(negative_image)
+
+        yield (
+            [np.array(anchor_batch), np.array(positive_batch), np.array(negative_batch)],
+            np.zeros((batch_size,)),  # Dummy labels, as the loss function doesn't use them
+        )
 
 
 def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
@@ -110,7 +135,6 @@ def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
     return dataset
 
 
-# TODO: Broken function because of imagetenasor size
 def visualize_triplets(dataset, num_triplets=3):
     for anchor, positive, negative in dataset.take(num_triplets):
         plt.figure(figsize=(6, 2))

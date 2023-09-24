@@ -5,6 +5,8 @@ import numpy as np
 
 from models.siamese import Siamese
 
+from datasets.load_datasets import load_sketch_stats, load_images_paths, triplet_generator
+
 AUTO = tf.data.AUTOTUNE
 
 EPOCHS = 100
@@ -27,19 +29,28 @@ def map_func(example_serialized):
 
 def main():
 
-    # TODO: load dataset
-    dataset = tf.data.Dataset.from_tensor_slices((np.random.rand(100, 224, 224, 3), np.random.rand(100, 224, 224, 3)))
+    df_sketch = load_sketch_stats()
+    anchors, positives = load_images_paths(df_sketch)
 
-    train_dataset = dataset
-    train_dataset = (
-        train_dataset.shuffle(1024)
+    # this variable have all the anchor-positive pairs
+    triplet_paths = list(zip(anchors, positives))
+
+    # images need to be serialized into a dataset
+    dataset = tf.data.Dataset.from_generator(
+        triplet_generator(triplet_paths),
+        output_types=(tf.float32, tf.float32, tf.float32),
+        output_shapes=(224, 224, 224)
+    )
+
+    dataset = (
+        dataset.shuffle(1024)
         .map(map_func, num_parallel_calls=AUTO)
         .batch(BATCH_SIZE)
         .prefetch(AUTO) )
 
     siamese_model = Siamese()
     siamese_model.compile(optimizer=tf.keras.optimizers.SGD(momentum=0.9))                            
-    history = siamese_model.fit(train_dataset, epochs = EPOCHS)
+    history = siamese_model.fit(dataset, epochs = EPOCHS)
 
     history_file = os.path.join('model_history.npy')
     np.save(history_file, history.history)

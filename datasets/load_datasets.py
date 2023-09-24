@@ -77,7 +77,7 @@ def load_and_preprocess_image(file_path):
 def generate_triplets(anchor_path, positive_path, triplet_paths):
     anchor_image = load_and_preprocess_image(anchor_path)
     positive_image = load_and_preprocess_image(positive_path)
-    print(anchor_image)
+    # print(anchor_image)
 
     negative_path = None
     negative_image = None
@@ -95,8 +95,8 @@ def generate_triplets(anchor_path, positive_path, triplet_paths):
 
 def triplet_generator(triplet_paths):
     for triplet_path in triplet_paths:
-        print(triplet_path)
-        yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
+        anchor, positive, negative = generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
+        yield {'image-anchor': anchor, 'image-positive': positive, 'image-negative': negative}
 
 
 def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):

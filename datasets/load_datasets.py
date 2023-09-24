@@ -79,7 +79,16 @@ def load_and_preprocess_image(file_path):
 def generate_triplets(anchor_path, positive_path, triplet_paths):
     anchor_image = load_and_preprocess_image(anchor_path)
     positive_image = load_and_preprocess_image(positive_path)
-    return anchor_image, positive_image
+
+    negative_path = None
+    negative_image = None
+
+    while negative_image is None:
+        negative_path = triplet_paths[random.randint(0, len(triplet_paths) - 1)][0]
+        if negative_path != anchor_path and negative_path != positive_path:
+            negative_image = load_and_preprocess_image(negative_path)
+
+    return anchor_image, positive_image, negative_image
 
 
 def triplet_generator(triplet_paths):
@@ -93,8 +102,8 @@ def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
     dataset = tf.data.Dataset.from_generator(
         triplet_generator,
         args=[triplet_paths],
-        output_types=(tf.float32, tf.float32),
-        output_shapes=(image_size, image_size)
+        output_types=(tf.float32, tf.float32, tf.float32),
+        output_shapes=(image_size, image_size, image_size)
     )
 
     dataset = dataset.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
@@ -103,12 +112,21 @@ def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
 
 # TODO: Broken function because of imagetenasor size
 def visualize_triplets(dataset, num_triplets=3):
-    for triplet in range(num_triplets):
-        for anchor, positive in dataset.take(1):
-            fig, ax = plt.subplots(1, 3)
-            ax[0].imshow(anchor)
-            ax[1].imshow(positive)
-            plt.show()
+    for anchor, positive, negative in dataset.take(num_triplets):
+        plt.figure(figsize=(6, 2))
+        plt.subplot(1, 3, 1)
+        plt.imshow(anchor[0])
+        plt.title("Anchor")
+
+        plt.subplot(1, 3, 2)
+        plt.imshow(positive[0])
+        plt.title("Positive")
+
+        plt.subplot(1, 3, 3)
+        plt.imshow(negative[0])
+        plt.title("Negative")
+
+        plt.show()
 
 
 def main():

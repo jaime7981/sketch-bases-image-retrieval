@@ -4,8 +4,7 @@ import tensorflow as tf
 import numpy as np
 from matplotlib import pyplot as plt
 import random
-from pathlib import Path
-import shlex
+from sklearn.model_selection import train_test_split
 
 # get path of running script
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -91,34 +90,9 @@ def generate_triplets(anchor_path, positive_path, triplet_paths):
     return anchor_image, positive_image, negative_image
 
 
-def triplet_generator(triplet_paths, batch_size, image_size):
-    while True:
-        indices = np.random.choice(len(triplet_paths), size=batch_size)
-        anchor_batch = []
-        positive_batch = []
-        negative_batch = []
-
-        for index in indices:
-            anchor_path, positive_path = triplet_paths[index]
-            anchor_image = load_and_preprocess_image(anchor_path)
-            positive_image = load_and_preprocess_image(positive_path)
-
-            negative_path = None
-            negative_image = None
-
-            while negative_image is None:
-                negative_path = triplet_paths[random.randint(0, len(triplet_paths) - 1)][0]
-                if negative_path != anchor_path and negative_path != positive_path:
-                    negative_image = load_and_preprocess_image(negative_path)
-
-            anchor_batch.append(anchor_image)
-            positive_batch.append(positive_image)
-            negative_batch.append(negative_image)
-
-        yield (
-            [np.array(anchor_batch), np.array(positive_batch), np.array(negative_batch)],
-            np.zeros((batch_size,)),  # Dummy labels, as the loss function doesn't use them
-        )
+def triplet_generator(triplet_paths):
+    for triplet_path in triplet_paths:
+        yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
 
 
 def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
@@ -133,6 +107,20 @@ def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
 
     dataset = dataset.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
+
+
+def split_dataset(dataset, batch_size = 128,train_size=0.8, shuffle=True):
+    dataset_list = list(dataset)
+
+    train_triplets, val_triplets = train_test_split(dataset_list, test_size=0.2, random_state=42)
+
+    train_dataset = tf.data.Dataset.from_tensor_slices(train_triplets)
+    val_dataset = tf.data.Dataset.from_tensor_slices(val_triplets)
+
+    train_dataset = train_dataset.batch(batch_size)
+    test_dataset = test_dataset.batch(batch_size)
+
+    return train_dataset, val_dataset
 
 
 def visualize_triplets(dataset, num_triplets=3):

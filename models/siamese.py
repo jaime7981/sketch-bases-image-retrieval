@@ -51,13 +51,17 @@ class Siamese(tf.keras.Model):
         outputs = tf.math.l2_normalize(x, axis=1)
         
         return tf.keras.Model(inputs, outputs, name="encoder")
-     
+    
+    def call(self, inputs):             
+        return self.encoder(inputs)
+
+
     def compute_loss(self, xa, xp, xn):                            
         margin = self.MARGIN
-        dist_pos = tf.sqrt(tf.reduce_sum(tf.math.square(xa - xp), axis = 1))
-        dist_neg = tf.sqrt(tf.reduce_sum(tf.math.square(xa - xn), axis = 1))
-        #dist_pos  = tf.math.sqrt(2.0 - 2.0*tf.reduce_sum((xa * xp), axis = 1))
-        #dist_neg  = tf.math.sqrt(2.0 - 2.0*tf.reduce_sum((xa * xn), axis = 1))
+        #dist_pos = tf.sqrt(tf.reduce_sum(tf.math.square(xa - xp), axis = 1))
+        #dist_neg = tf.sqrt(tf.reduce_sum(tf.math.square(xa - xn), axis = 1))
+        dist_pos  = tf.math.sqrt(2.0 - 2.0*tf.reduce_sum((xa * xp), axis = 1))
+        dist_neg  = tf.math.sqrt(2.0 - 2.0*tf.reduce_sum((xa * xn), axis = 1))
         loss = tf.math.maximum(0.0, dist_pos - dist_neg + margin)
                         
         return tf.reduce_mean(loss), tf.reduce_mean(dist_pos), tf.reduce_mean(dist_neg)
@@ -65,14 +69,16 @@ class Siamese(tf.keras.Model):
                                     
     def train_step(self, batch):
         # Unpack the data.
-        anchors, positives = batch
+        anchors, positives, negatives = batch
         # select negatives
+        '''
         n = tf.shape(anchors)[0]
         pos = tf.range(n)
         perm = tf.random.shuffle(pos)
         perm = tf.where(perm == pos, (perm + 1) % n, perm)
         negatives = tf.gather(anchors, perm)
-        #view(anchors, positives, negatives)
+        '''
+        # view(anchors, positives, negatives)
         # training one step
         with tf.GradientTape() as tape:
             xa = self.encoder(anchors)
@@ -95,8 +101,8 @@ class Siamese(tf.keras.Model):
         return {"loss": self.loss_tracker.result(), "dist_pos": self.dist_pos_tracker.result(), "dist_neg": self.dist_neg_tracker.result()}
                                         
     
-#     def fit_siamese(self, data):
-#         for batch in data :
-#             self.train_step(batch)
-#         return 0
+#    def fit_siamese(self, data):
+#        for batch in data :
+#            self.train_step(batch)
+#        return 0
         

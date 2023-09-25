@@ -74,6 +74,12 @@ class Siamese(tf.keras.Model):
     def call(self, inputs):
         return self.siamese_network(inputs)
 
+    def summary(self):
+        return self.siamese_network.summary()
+
+    def embbeding_summary(self):
+        return self.siamese_network.get_layer("Embedding").summary()
+
     def train_step(self, data):
         # GradientTape is a context manager that records every operation that
         # you do inside. We are using it here to compute the loss so we can get

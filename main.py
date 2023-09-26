@@ -21,24 +21,14 @@ def main():
     dataset = dataset.repeat(EPOCHS)
 
     siamese_model = Siamese()
-
-    siamese_model.compile(
-        optimizer=tf.optimizers.Adam(0.0001)
-    )
-
-    siamese_model.build(input_shape=image_size)
-
-    siamese_model.summary()
-    # siamese_model.embbeding_summary()
-    siamese_model.resnet_summary()
-
-    # exit()
+    siamese_model.compile(optimizer=tf.keras.optimizers.SGD(momentum=0.9))
+    siamese_model.build(input_shape=(None, *image_size))
 
     history = siamese_model.fit(
         dataset,
         steps_per_epoch=steps_per_epoch,
         epochs=EPOCHS,
-        verbose=1,
+        batch_size=BATCH_SIZE,
         use_multiprocessing=True,
         workers=8,
     )
@@ -52,9 +42,10 @@ def main():
         print("Error saving model weights")
 
     try:
-        siamese_model.save('siamese_model.h5')
-    except:
+        siamese_model.save('siamese_model', save_format='tf')
+    except Exception as e:
         print("Error saving model")
+        print(e)
 
 if __name__ == '__main__':
     main()

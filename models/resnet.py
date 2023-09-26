@@ -48,7 +48,20 @@ class SEBlock(tf.keras.layers.Layer):
         scale = tf.keras.activations.sigmoid(self.fc_2(y))
         scale = tf.reshape(scale, (-1,1,1,self.channels))
         y = tf.math.multiply(inputs, scale)
-        return y        
+        return y
+    
+    def get_model(self, input_shape):
+        x = tf.keras.layers.Input(shape = input_shape)
+        return tf.keras.Model(inputs = [x], outputs = self.call(x))
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "channels": self.channels
+            }
+        )
+        return config
         
 
 class ResidualBlock(tf.keras.layers.Layer):
@@ -93,6 +106,19 @@ class ResidualBlock(tf.keras.layers.Layer):
         if self.use_se_block :
             x = self.se(x)        
         return x
+    
+    def get_model(self, input_shape):
+        x = tf.keras.layers.Input(shape = input_shape)
+        return tf.keras.Model(inputs = [x], outputs = self.call(x))
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "use_projection": self.use_projection
+            }
+        )
+        return config
 
 
 class BottleneckBlock(tf.keras.layers.Layer):
@@ -142,6 +168,19 @@ class BottleneckBlock(tf.keras.layers.Layer):
             x = self.se(x)        
         return x
 
+    def get_model(self, input_shape):
+        x = tf.keras.layers.Input(shape = input_shape)
+        return tf.keras.Model(inputs = [x], outputs = self.call(x))
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "use_projection": self.use_projection
+            }
+        )
+        return config
+
 class ResNetBlock(tf.keras.layers.Layer):
     """
     resnet block implementation
@@ -173,10 +212,25 @@ class ResNetBlock(tf.keras.layers.Layer):
             self.block_collector.append(residual_block(filters = filters, stride = 1, se_factor = se_factor, kernel_regularizer = kernel_regularizer, name = 'rblock_{}'.format(idx_block)))
                     
     def call(self, inputs):
-        x = inputs;
+        x = inputs
         for block in self.block_collector :
             x = block(x)
-        return x;
+        return x
+
+    def get_model(self, input_shape):
+        x = tf.keras.layers.Input(shape = input_shape)
+        return tf.keras.Model(inputs = [x], outputs = self.call(x))
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "filters": self.filters, 
+                "block_size": self.block_size,
+                "block_collector": self.block_collector
+            }
+        )
+        return config
 
 
 class ResNetBackbone(tf.keras.Model):
@@ -205,6 +259,10 @@ class ResNetBackbone(tf.keras.Model):
                                                   se_factor = se_factor,
                                                   name = 'block_{}'.format(idx_block)))
         self.bn_last= tf.keras.layers.BatchNormalization(name = 'bn_last')
+
+    
+    def build(self, input_shape):
+        return super().build(input_shape)
             
         
     def call(self, inputs):
@@ -216,6 +274,13 @@ class ResNetBackbone(tf.keras.Model):
         x = self.bn_last(x)                
         x = tf.keras.activations.relu(x)  
         return x
+
+    def get_model(self, input_shape):        
+        x = tf.keras.layers.Input(shape = input_shape)
+        return tf.keras.Model(inputs = [x], outputs = self.call(x))
+    
+    def get_config(self):
+        return super().get_config()
     
 class ResNet(tf.keras.Model):
     """ 

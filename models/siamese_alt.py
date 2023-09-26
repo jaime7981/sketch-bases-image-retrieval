@@ -52,9 +52,9 @@ class Siamese(tf.keras.Model):
         anchors, positives, negatives = batch
         
         with tf.GradientTape() as tape:
-            xa = self.encoder(anchors)
-            xp = self.encoder(positives)
-            xn = self.encoder(negatives)            
+            xa = self.call(anchors)
+            xp = self.call(positives)
+            xn = self.call(negatives)            
             loss, dist_pos, dist_neg = self.compute_loss(xa, xp, xn)
         
         learnable_params = (
@@ -68,8 +68,7 @@ class Siamese(tf.keras.Model):
         self.dist_neg_tracker.update_state(dist_neg)
         
         return {"loss": self.loss_tracker.result(), "dist_pos": self.dist_pos_tracker.result(), "dist_neg": self.dist_neg_tracker.result()}
-
-'''
+    
     def summary(self):
         return self.encoder.summary()
     
@@ -82,4 +81,12 @@ class Siamese(tf.keras.Model):
     @property
     def metrics(self):
         return [self.loss_tracker, self.dist_pos_tracker, self.dist_neg_tracker]
-'''
+
+    def get_config(self):
+        config = super(Siamese, self).get_config()
+        config.update({
+            "input_shape_": self.input_shape_,
+            "margin": self.margin,
+            "weight_decay": self.weight_decay,
+        })
+        return config

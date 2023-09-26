@@ -22,14 +22,14 @@ class DistanceLayer(layers.Layer):
         return (ap_distance, an_distance)
 
 class Siamese(tf.keras.Model):
-    def __init__(self, input_shape_, margin=0.5, weight_decay = 0.0005):
+    def __init__(self, margin=0.5, weight_decay = 0.0005):
         super().__init__()
 
-        self.input_shape_ = input_shape_
+        # self.input_shape_ = input_shape_
         self.margin = margin
         self.weight_decay = weight_decay
 
-        self.encoder = self.get_encoder()
+        self.encoder = None
 
         self.loss_tracker = tf.keras.metrics.Mean(name="loss")
         self.dist_pos_tracker = tf.keras.metrics.Mean(name="dist_pos")
@@ -99,7 +99,23 @@ class Siamese(tf.keras.Model):
         return self.encoder(inputs)
 
     def build(self, input_shape):
-        return self.get_encoder()
+        inputs = tf.keras.layers.Input(name="image", shape=input_shape)                
+        x = inputs
+        bkbone = m_resnet.ResNetBackbone(
+            [3,4,6,3], 
+            [64,128, 256, 512], 
+            kernel_regularizer = tf.keras.regularizers.l2(self.weight_decay)
+        )        
+        x = bkbone(x)
+        x = tf.keras.layers.GlobalAveragePooling2D()(x)
+        x = tf.keras.layers.Dense(input_shape[0])(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.ReLU()(x)
+        x = tf.keras.layers.Dense(input_shape[0])(x)
+        
+        outputs = tf.math.l2_normalize(x, axis=1)
+
+        self.encoder = tf.keras.Model(inputs, outputs, name="Encoder")
 
     def summary(self):
         return self.encoder.summary()
@@ -110,51 +126,88 @@ class Siamese(tf.keras.Model):
     def resnet_summary(self):
         return self.encoder.get_layer("res_net_backbone").summary()
 
+    '''
     def train_step(self, data):
-        # GradientTape is a context manager that records every operation that
-        # you do inside. We are using it here to compute the loss so we can get
-        # the gradients and apply them using the optimizer specified in
-        # `compile()`.
         with tf.GradientTape() as tape:
-            loss, dist_pos, dist_neg = self._compute_loss(data)
+            loss, dist_pos, dist_neg = self.compute_loss(data)
 
-        # Storing the gradients of the loss function with respect to the
-        # weights/parameters.
         gradients = tape.gradient(loss, self.encoder.trainable_weights)
 
-        # Applying the gradients on the model using the specified optimizer
         self.optimizer.apply_gradients(
             zip(gradients, self.encoder.trainable_weights)
         )
 
-        # Let's update and return the training loss metric.
         self.loss_tracker.update_state(loss)
         self.dist_pos_tracker.update_state(dist_pos)
         self.dist_neg_tracker.update_state(dist_neg)
         
         return {"loss": self.loss_tracker.result(), "dist_pos": self.dist_pos_tracker.result(), "dist_neg": self.dist_neg_tracker.result()}
-    
+    '''
+
+    def train_step(self, batch):
+        # Unpack the data.
+        anchors, positives, negatives = batch
+        # select negatives
+        '''
+        n = tf.shape(anchors)[0]
+        pos = tf.range(n)
+        perm = tf.random.shuffle(pos)
+        perm = tf.where(perm == pos, (perm + 1) % n, perm)
+        negatives = tf.gather(anchors, perm)
+        '''
+        # view(anchors, positives, negatives)
+        # training one step
+        with tf.GradientTape() as tape:
+            xa = self.encoder(anchors)
+            xp = self.encoder(positives)
+            xn = self.encoder(negatives)            
+            loss, dist_pos, dist_neg = self.compute_loss(xa, xp, xn)
+        
+        # Compute gradients and update the parameters.
+        learnable_params = (
+            self.encoder.trainable_variables
+        )
+        gradients = tape.gradient(loss, learnable_params)
+        self.optimizer.apply_gradients(zip(gradients, learnable_params))
+
+        # tracking status.        
+        self.loss_tracker.update_state(loss)
+        self.dist_pos_tracker.update_state(dist_pos)
+        self.dist_neg_tracker.update_state(dist_neg)
+        
+        return {"loss": self.loss_tracker.result(), "dist_pos": self.dist_pos_tracker.result(), "dist_neg": self.dist_neg_tracker.result()}
+
+
     def test_step(self, data):
-        loss = self._compute_loss(data)
+        loss = self.compute_loss(data)
 
         # Let's update and return the loss metric.
         self.loss_tracker.update_state(loss)
-        return {"loss": self.loss_tracker.result()}
+        return {"loss": self.loss_tracker.result(), "dist_pos": self.dist_pos_tracker.result(), "dist_neg": self.dist_neg_tracker.result()}
 
-    def _compute_loss(self, data):
-        # The output of the network is a tuple containing the distances
-        # between the anchor and the positive example, and the anchor and
-        # the negative example.
+
+    '''
+    def compute_loss(self, data):
         ap_distance, an_distance = self.encoder(data)
 
-        # Computing the Triplet Loss by subtracting both distances and
-        # making sure we don't get a negative value.
         loss = ap_distance - an_distance
         loss = tf.maximum(loss + self.margin, 0.0)
         return loss, ap_distance, an_distance
+    '''
+
+    def compute_loss(self, xa, xp, xn):                            
+        margin = self.margin
+        #dist_pos = tf.sqrt(tf.reduce_sum(tf.math.square(xa - xp), axis = 1))
+        #dist_neg = tf.sqrt(tf.reduce_sum(tf.math.square(xa - xn), axis = 1))
+        dist_pos  = tf.math.sqrt(2.0 - 2.0*tf.reduce_sum((xa * xp), axis = 1))
+        dist_neg  = tf.math.sqrt(2.0 - 2.0*tf.reduce_sum((xa * xn), axis = 1))
+        loss = tf.math.maximum(0.0, dist_pos - dist_neg + margin)
+                        
+        return tf.reduce_mean(loss), tf.reduce_mean(dist_pos), tf.reduce_mean(dist_neg)
+
 
     @property
     def metrics(self):
         # We need to list our metrics here so the `reset_states()` can be
         # called automatically.
-        return [self.loss_tracker]
+        return [self.loss_tracker, self.dist_pos_tracker, self.dist_neg_tracker]

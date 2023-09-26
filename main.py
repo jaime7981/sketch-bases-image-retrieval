@@ -20,7 +20,7 @@ def main():
     dataset = tensorflow_dataset(anchors, positives, BATCH_SIZE)
     dataset = dataset.repeat(EPOCHS)
 
-    siamese_model = Siamese()
+    siamese_model = Siamese(image_size)
 
     siamese_model.compile(
         optimizer=tf.optimizers.Adam(0.0001)
@@ -29,7 +29,10 @@ def main():
     siamese_model.build(input_shape=image_size)
 
     siamese_model.summary()
-    siamese_model.embbeding_summary()
+    # siamese_model.embbeding_summary()
+    siamese_model.resnet_summary()
+
+    exit()
 
     history = siamese_model.fit(
         dataset,

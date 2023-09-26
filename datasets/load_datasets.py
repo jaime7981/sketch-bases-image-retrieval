@@ -5,6 +5,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 import random
 from sklearn.model_selection import train_test_split
+from PIL import Image
+import cairosvg
+import io
 
 # get path of running script
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -140,6 +143,41 @@ def visualize_triplets(dataset, num_triplets=3):
 
         plt.show()
 
+
+# Load and preprocess the SVG file
+def preprocess_svg(svg_file_path, target_size=(224, 224)):
+    # Load the SVG file using a library like lxml or svgwrite.
+    # Extract the path data and convert it to an image.
+    # For simplicity, let's assume you have an SVG to PNG conversion function.
+    # Here's an example:
+    # svg_to_png(svg_file_path, output_png_path)
+
+    # svg_file_path = os.path.join(SCRIPT_PATH, svg_file_path)
+
+    # Load the PNG image
+    
+
+    try:
+        # Convert SVG to PNG using cairosvg
+        svg_data = open(svg_file_path, 'rb').read()
+        png_data = cairosvg.svg2png(bytestring=svg_data)
+
+        # Open the PNG image with Pillow
+        img = Image.open(io.BytesIO(png_data))
+        img = img.convert("RGB")
+        # img = Image.open(svg_file_path)
+    except:
+        print('Error reading file: {}'.format(svg_file_path))
+        return None
+    
+    # Resize and preprocess the image
+    # img = img.resize(target_size)
+    img = tf.keras.preprocessing.image.img_to_array(img)
+    img = tf.image.resize(img, target_size)
+    img = tf.expand_dims(img, axis=0)  # Add batch dimension
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    # img = tf.keras.applications.resnet50.preprocess_input(img)  # Preprocess for ResNet model
+    return img
 
 def main():
     df_sketch = load_sketch_stats()

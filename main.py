@@ -51,6 +51,9 @@ def main():
     plt.imshow(svg_image[0])
     plt.show()
 
+    plt.imshow(prediction)
+    plt.show()
+
     try:
         siamese_model.save_weights('siamese_model_weights.h5')
         print('h5 whights model saved')
@@ -62,13 +65,6 @@ def main():
         print('keras model saved')
     except Exception as e:
         print("Error saving keras model")
-        print(e)
-
-    try:
-        siamese_model.save('siamese_model.h5')
-        print('h5 model saved')
-    except Exception as e:
-        print("Error saving h5 model")
         print(e)
 
     try:

@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from models.siamese_alt import Siamese
-from datasets.load_datasets import load_sketch_stats, load_images_paths, tensorflow_dataset, visualize_triplets, split_dataset, preprocess_svg
+from datasets.load_datasets import load_sketch_stats, load_images_paths, tensorflow_dataset, visualize_triplets, preprocess_svg
 
 svg_test_path = "/media/jaimefdz/3DC6172F5E0FA9A6/202302/deep_learning/tarea_2/datasets/sketches-06-04/sketches/airplane/n02691156_10151-1.svg"
 
@@ -48,11 +48,12 @@ def main():
 
     print(prediction)
 
-    plt.imshow(svg_image[0])
-    plt.show()
-
-    plt.imshow(prediction)
-    plt.show()
+    try:
+        siamese_model.encoder.save('siamese_model')
+        print('encoder model saved')
+    except Exception as e:
+        print("Error saving encoder model")
+        print(e)
 
     try:
         siamese_model.save_weights('siamese_model_weights.h5')

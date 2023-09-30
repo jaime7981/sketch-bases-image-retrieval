@@ -43,8 +43,9 @@ def load_images_paths(df_sketch):
             image_id + '-' + str(sketch_id) + '.png'
         )
 
-        anchors.append(photo_path)
-        positives.append(sketch_path)
+        if photo_path not in anchors:
+            anchors.append(photo_path)
+            positives.append(sketch_path)
 
     return anchors, positives
 
@@ -98,7 +99,7 @@ def triplet_generator(triplet_paths):
         yield generate_triplets(triplet_path[0], triplet_path[1], triplet_paths)
 
 
-def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
+def tensorflow_dataset(anchor_paths, positive_paths, shuffle = True, batch = True, batch_size=128):
     triplet_paths = list(zip(anchor_paths, positive_paths))
 
     dataset = tf.data.Dataset.from_generator(
@@ -108,7 +109,14 @@ def tensorflow_dataset(anchor_paths, positive_paths, batch_size=128):
         output_shapes=(image_size, image_size, image_size)
     )
 
-    dataset = dataset.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    if shuffle:
+        dataset = dataset.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    else:
+        if batch:
+            dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+        else:
+            dataset = dataset.prefetch(tf.data.AUTOTUNE)
+
     return dataset
 
 
